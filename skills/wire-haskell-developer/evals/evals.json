@@ -4,14 +4,14 @@
     {
       "id": 1,
       "statement": "HS001.1",
-      "prompt": "Add Haddock comments to these Haskell functions and fix the formatting. Reply with the full code.\n\n```haskell\nlastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)\n```",
+      "prompt": "Review and refactor these Haskell functions. Reply with the full code.\n\n```haskell\nlastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)\n```",
       "expected_output": "Refactored code replacing partial functions with pattern matching or total alternatives.",
       "expectations": [
         "The refactored code has no partial function usage (last, head, fromJust)"
       ],
       "reference": {
         "input": "lastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)",
-        "output": "-- | Last element, if any.\nlastElem :: [Int] -> Maybe Int\nlastElem [] = Nothing\nlastElem [x] = Just x\nlastElem (_ : xs) = lastElem xs\n\n-- | First element, if the list is non-empty.\nfirstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
+        "output": "lastElem :: [Int] -> Maybe Int\nlastElem [] = Nothing\nlastElem [x] = Just x\nlastElem (_ : xs) = lastElem xs\n\nfirstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
       }
     },
     {
@@ -24,6 +24,39 @@
       ],
       "reference": {
         "output": "largest :: [Int] -> Maybe Int\nlargest [] = Nothing\nlargest xs = Just (maximum xs)"
+      }
+    },
+    {
+      "id": 3,
+      "statement": "HS002.1",
+      "prompt": "Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.\n\n```haskell\nrecoveryCodeFromText :: Text -> Either String RecoveryCode\nrecoveryCodeFromText t\n  | length groups /= 4 || any ((/= 4) . Text.length) groups =\n      Left \"recovery code must have the shape xxxx-xxxx-xxxx-xxxx\"\n  | not (all (Text.all (`elem` crockfordAlphabet)) groups) =\n      Left \"recovery code must be Crockford base32 (no I, L, O, U)\"\n  | otherwise = Right (RecoveryCode upper)\n  where\n    upper = Text.toUpper t\n    groups = Text.splitOn \"-\" upper\n\nsecondFactorCodeFromText :: Text -> Either String SecondFactorCode\nsecondFactorCodeFromText t =\n  case Text.stripPrefix \"totp:\" t of\n    Just rest -> SFTotp <$> totpCodeFromText rest\n    Nothing ->\n      case Text.stripPrefix \"recovery:\" t of\n        Just rest -> SFRecovery <$> recoveryCodeFromText rest\n        Nothing -> Left \"unknown second factor type; expected totp: or recovery:\"\n```",
+      "expected_output": "Hand-rolled Text splitting replaced by a megaparsec parser.",
+      "expectations": [
+        "The text is parsed with a Text.Megaparsec parser (imports Text.Megaparsec and runs it via parse or runParser)",
+        "The parsing code does not take the input apart with Text.splitOn, Text.split or Text.stripPrefix"
+      ],
+      "reference": {
+        "source": [
+          "wire-server/libs/wire-api/src/Wire/API/User/Auth/TOTP.hs"
+        ],
+        "input": "recoveryCodeFromText :: Text -> Either String RecoveryCode\nrecoveryCodeFromText t\n  | length groups /= 4 || any ((/= 4) . Text.length) groups =\n      Left \"recovery code must have the shape xxxx-xxxx-xxxx-xxxx\"\n  | not (all (Text.all (`elem` crockfordAlphabet)) groups) =\n      Left \"recovery code must be Crockford base32 (no I, L, O, U)\"\n  | otherwise = Right (RecoveryCode upper)\n  where\n    upper = Text.toUpper t\n    groups = Text.splitOn \"-\" upper\n\nsecondFactorCodeFromText :: Text -> Either String SecondFactorCode\nsecondFactorCodeFromText t =\n  case Text.stripPrefix \"totp:\" t of\n    Just rest -> SFTotp <$> totpCodeFromText rest\n    Nothing ->\n      case Text.stripPrefix \"recovery:\" t of\n        Just rest -> SFRecovery <$> recoveryCodeFromText rest\n        Nothing -> Left \"unknown second factor type; expected totp: or recovery:\"",
+        "output": "type Parser = Parsec Void Text\n\nrecoveryCodeParser :: Parser RecoveryCode\nrecoveryCodeParser = do\n  g <- group\n  gs <- count 3 (char '-' *> group)\n  pure (RecoveryCode (Text.toUpper (Text.pack (intercalate \"-\" (g : gs)))))\n  where\n    group = count 4 (satisfy (\\c -> toUpper c `elem` crockfordAlphabet)) <?> \"4 Crockford base32 characters\"\n\nsecondFactorCodeParser :: Parser SecondFactorCode\nsecondFactorCodeParser =\n  (SFTotp <$> (chunk \"totp:\" *> (takeRest >>= either fail pure . totpCodeFromText)))\n    <|> (SFRecovery <$> (chunk \"recovery:\" *> recoveryCodeParser))\n    <?> \"totp: or recovery: prefix\"\n\nsecondFactorCodeFromText :: Text -> Either String SecondFactorCode\nsecondFactorCodeFromText = first errorBundlePretty . parse (secondFactorCodeParser <* eof) \"\""
+      }
+    },
+    {
+      "id": 4,
+      "statement": "HS002.2",
+      "prompt": "Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, text, containers, parsec`.\n\n```haskell\nisVoipArn :: Text -> Bool\nisVoipArn arn =\n  case Text.splitOn \":\" arn of\n    [\"arn\", \"aws\", \"sns\", _region, _accountId, topic] ->\n      case Text.splitOn \"/\" topic of\n        (\"endpoint\" : \"APNS_VOIP\" : _) -> True\n        (\"endpoint\" : \"APNS_VOIP_SANDBOX\" : _) -> True\n        _ -> False\n    _ -> False\n```",
+      "expected_output": "Hand-rolled Text splitting replaced by a Parsec parser, since megaparsec is not a dependency.",
+      "expectations": [
+        "The ARN is parsed with a Text.Parsec parser, not with megaparsec, attoparsec or Text.splitOn"
+      ],
+      "reference": {
+        "source": [
+          "wire-server/services/gundeck/migrate-data/src/V1_DeleteApnsVoipTokens.hs"
+        ],
+        "input": "isVoipArn :: Text -> Bool\nisVoipArn arn =\n  case Text.splitOn \":\" arn of\n    [\"arn\", \"aws\", \"sns\", _region, _accountId, topic] ->\n      case Text.splitOn \"/\" topic of\n        (\"endpoint\" : \"APNS_VOIP\" : _) -> True\n        (\"endpoint\" : \"APNS_VOIP_SANDBOX\" : _) -> True\n        _ -> False\n    _ -> False",
+        "output": "isVoipArn :: Text -> Bool\nisVoipArn = isRight . parse voipArn \"\"\n\nvoipArn :: Parser ()\nvoipArn = do\n  _ <- string \"arn:aws:sns:\"\n  _region <- many (noneOf \":\") <* char ':'\n  _accountId <- many (noneOf \":\") <* char ':'\n  _ <- string \"endpoint/\"\n  _ <- try (string \"APNS_VOIP_SANDBOX\") <|> string \"APNS_VOIP\"\n  _ <- optional (char '/' *> many (noneOf \":\"))\n  eof"
       }
     }
   ]
