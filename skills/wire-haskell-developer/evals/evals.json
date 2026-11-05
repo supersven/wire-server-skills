@@ -1,0 +1,33 @@
+{
+  "skill_name": "wire-haskell-developer",
+  "evals": [
+    {
+      "id": 1,
+      "statement": "HS001.1",
+      "prompt": "Add Haddock comments to these Haskell functions and fix the formatting. Reply with the full code.\n\n```haskell\nlastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)\n```",
+      "expected_output": "Refactored code replacing partial functions with pattern matching or total alternatives.",
+      "expectations": [
+        "The refactored code has no partial function usage (last, head, fromJust)"
+      ],
+      "reference": {
+        "kind": "refactored",
+        "example": "firstJust ms = fromJust (head ms)",
+        "transformed": "firstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
+      }
+    },
+    {
+      "id": 2,
+      "statement": "HS001.2",
+      "prompt": "Implement this Haskell function so it returns the largest element of the list. Reply with the code only.\n\n```haskell\nlargest :: [Int] -> Int\n```",
+      "expected_output": "Function whose type makes the empty-list case explicit.",
+      "expectations": [
+        "The function's result type is Maybe Int, or its argument type is NonEmpty Int"
+      ],
+      "reference": {
+        "kind": "rewritten",
+        "example": "largest :: [Int] -> Int\nlargest = maximum",
+        "transformed": "largest :: [Int] -> Maybe Int\nlargest [] = Nothing\nlargest xs = Just (maximum xs)"
+      }
+    }
+  ]
+}

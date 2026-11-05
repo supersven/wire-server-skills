@@ -1,0 +1,6 @@
+[
+  {"query": "write a haskell function that parses a comma separated list of ints in src/Wire/Parse.hs", "should_trigger": true},
+  {"query": "review this Haskell module for mistakes: module Foo where import Data.Maybe (fromJust)", "should_trigger": true},
+  {"query": "write a python script that renames all files in a directory to lowercase", "should_trigger": false},
+  {"query": "explain the difference between TCP and UDP", "should_trigger": false}
+]
