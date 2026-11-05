@@ -2,7 +2,7 @@ tmp/
 result
 result-*
 .eval-workspace/
-.claude/autoharness/
+**/.claude/autoharness/
 .claude/commands/
 __pycache__/
 .claude/skills/*/.claude/
