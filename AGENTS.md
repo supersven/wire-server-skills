@@ -45,11 +45,6 @@ For every statement or expression in the skill we have a generated entry in ./RE
 
 Source: \`<project>/<path>\`
 
-Input:
-\`\`\`
-<code>
-\`\`\`
-
 Prompt:
 \`\`\`
 <prompt>
@@ -63,16 +58,15 @@ Output:
 
 The placeholders are:
 
-- `<code>`: the existing code the prompt asks to adjust. The `Input` block is
-  omitted if the prompt asks for new code.
-- `<prompt>`: the prompt of the eval, verbatim.
+- `<prompt>`: the prompt of the eval, verbatim. It contains the existing code
+  the prompt asks to adjust, so there is no separate input block.
 - `<adjusted / new code>`: how the code looks after applying the skill.
 - `<project>/<path>`: where the code was taken from, e.g.
   `wire-server/services/brig/src/test/Foo.hs`. The `Source` line is omitted if
   the code is not from a project.
 
-Several examples of the same statement repeat the `Source`/`Input`/`Prompt`/
-`Output` blocks.
+Several examples of the same statement repeat the `Source`/`Prompt`/`Output`
+blocks.
 
 In `\`` and `\`\`\``the`\` is to be read as quoted to avoid Markdown issues.
 The final document does not contain quotes. Code blocks inside a block (e.g.

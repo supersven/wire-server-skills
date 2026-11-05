@@ -1,8 +1,8 @@
 """Print REFERENCE.md, generated from SKILL.md statements and evals.json.
 
 One section per statement ("- HSnnn.n: <Title>. <body>"), title = first sentence.
-Each eval of the statement contributes an optional Source, an optional Input,
-the Prompt and the Output.
+Each eval of the statement contributes an optional Source, the Prompt (which
+contains any input code) and the Output.
 """
 
 import json
@@ -29,8 +29,6 @@ def example(eval_):
     parts = []
     if "source" in ref:
         parts.append("Source: " + ", ".join(f"`{path}`" for path in ref["source"]))
-    if "input" in ref:
-        parts.append(block("Input", ref["input"]))
     parts.append(block("Prompt", eval_["prompt"]))
     parts.append(block("Output", ref["output"]))
     return "\n\n".join(parts)
