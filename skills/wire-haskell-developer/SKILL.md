@@ -10,7 +10,6 @@ Each rule consists of statements with IDs (used to tie them to evals).
 
 ### HS001: Avoid partial functions
 
-- HS001.1: Replace partial functions in existing code. When refactoring or reviewing, replace `head`, `tail`, `init`, `last`, `fromJust`, `!!` by pattern matching or total alternatives (`listToMaybe`, `uncons`, `maybe`, `NonEmpty`).
 - HS001.2: Make the empty case explicit in the type. If the empty case has no sensible default, change the result type (e.g. to `Maybe`) instead of keeping a partial call (`error`) or inventing a default (`minBound`, `0`). A signature handed to you does not change this: when it cannot express the empty case, change it and say so in one line.
 
 ### HS002: Parse structured text with a parser library

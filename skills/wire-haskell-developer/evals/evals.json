@@ -2,19 +2,6 @@
   "skill_name": "wire-haskell-developer",
   "evals": [
     {
-      "id": 1,
-      "statement": "HS001.1",
-      "prompt": "Review and refactor these Haskell functions. Reply with the full code.\n\n```haskell\nlastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)\n```",
-      "expected_output": "Refactored code replacing partial functions with pattern matching or total alternatives.",
-      "expectations": [
-        "The refactored code has no partial function usage (last, head, fromJust)"
-      ],
-      "reference": {
-        "input": "lastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)",
-        "output": "lastElem :: [Int] -> Maybe Int\nlastElem [] = Nothing\nlastElem [x] = Just x\nlastElem (_ : xs) = lastElem xs\n\nfirstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
-      }
-    },
-    {
       "id": 2,
       "statement": "HS001.2",
       "prompt": "Implement this Haskell function so it returns the largest element of the list. Reply with the code only.\n\n```haskell\nlargest :: [Int] -> Int\n```",
