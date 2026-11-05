@@ -10,9 +10,8 @@
         "The refactored code has no partial function usage (last, head, fromJust)"
       ],
       "reference": {
-        "kind": "refactored",
-        "example": "firstJust ms = fromJust (head ms)",
-        "transformed": "firstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
+        "input": "lastElem :: [Int] -> Int\nlastElem xs = last xs\n\nfirstJust :: [Maybe Int] -> Int\nfirstJust ms = fromJust (head ms)",
+        "output": "-- | Last element, if any.\nlastElem :: [Int] -> Maybe Int\nlastElem [] = Nothing\nlastElem [x] = Just x\nlastElem (_ : xs) = lastElem xs\n\n-- | First element, if the list is non-empty.\nfirstJust :: [Maybe Int] -> Maybe Int\nfirstJust (m : _) = m\nfirstJust [] = Nothing"
       }
     },
     {
@@ -24,9 +23,7 @@
         "The function's result type is Maybe Int, or its argument type is NonEmpty Int"
       ],
       "reference": {
-        "kind": "rewritten",
-        "example": "largest :: [Int] -> Int\nlargest = maximum",
-        "transformed": "largest :: [Int] -> Maybe Int\nlargest [] = Nothing\nlargest xs = Just (maximum xs)"
+        "output": "largest :: [Int] -> Maybe Int\nlargest [] = Nothing\nlargest xs = Just (maximum xs)"
       }
     }
   ]

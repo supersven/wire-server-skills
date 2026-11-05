@@ -8,8 +8,8 @@ evals=$skill_dir/evals/evals.json
 skill=$skill_dir/SKILL.md
 
 # Plain assignments (not one big $(...)) so a failing command aborts the script.
-jq -e '.evals | all(has("id", "statement", "prompt", "expectations", "reference"))' "$evals" >/dev/null ||
-  { echo "$evals: eval without id/statement/prompt/expectations/reference"; exit 1; }
+jq -e '.evals | all(has("id", "statement", "prompt", "expectations") and (.reference | has("output")))' "$evals" >/dev/null ||
+  { echo "$evals: eval without id/statement/prompt/expectations/reference.output"; exit 1; }
 dups() { jq -r "[$1] | group_by(.) | map(select(length > 1) | .[0])[]" "$evals"; }
 
 rules=$(sed -nE 's/^### (HS[0-9]+):.*/\1/p' "$skill" | sort -u)

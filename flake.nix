@@ -39,7 +39,9 @@
           };
 
         checkCoverage = script "check-coverage" [ pkgs.jq pkgs.gnused pkgs.coreutils ];
-        genReference = script "gen-reference" [ pkgs.jq pkgs.gnused ];
+        genReference = pkgs.writers.writePython3Bin "gen-reference" {
+          flakeIgnore = [ "E501" ];
+        } (builtins.readFile ./scripts/gen-reference.py);
         runEvals = script "run-evals" [
           pkgs.jq
           pkgs.coreutils
