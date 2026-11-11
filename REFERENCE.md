@@ -18,6 +18,23 @@ largest [] = Nothing
 largest xs = Just (maximum xs)
 ```
 
+Prompt:
+````
+Implement this Haskell function so it returns the smallest element of the list. The signature is given by the caller module.
+
+```haskell
+smallest :: [Int] -> Int
+```
+````
+
+Output:
+```
+-- Signature changed: the empty list has no smallest element.
+smallest :: [Int] -> Maybe Int
+smallest [] = Nothing
+smallest xs = Just (minimum xs)
+```
+
 ## HS002.1: Use megaparsec instead of taking text apart by hand
 
 ### Examples
@@ -476,4 +493,80 @@ paginationClause (PaginationSortByName (Just (name, x))) =
 paginationClause (PaginationSortByCreatedAt (Just (createdAt, x))) =
   Just (mkClause "created_at" createdAt <> mkClause "id" x)
 paginationClause _ = Nothing
+```
+
+## HS004.1: Construct a product type with more than 3 fields using record syntax, one `field = value` per line in ormolu layout (trailing commas), not positionally
+
+### Examples
+
+Prompt:
+````
+Add a value `emptyBackend` like `aliceBackend`, but with no MLS and no users.
+
+```haskell
+data FakeBackend = FakeBackend
+  { serverMls :: Bool,
+    storedUsers :: [UserId],
+    clientState :: ClientStoreState,
+    keyPackages :: Map ClientId [KeyPackage],
+    keyPackageLifetime :: NominalDiffTime,
+    features :: FeatureSet
+  }
+
+aliceBackend :: FakeBackend
+aliceBackend = FakeBackend True [alice] emptyClientStoreState mempty usableLifetime def
+```
+````
+
+Output:
+```
+emptyBackend :: FakeBackend
+emptyBackend =
+  FakeBackend
+    { serverMls = False,
+      storedUsers = [],
+      clientState = emptyClientStoreState,
+      keyPackages = mempty,
+      keyPackageLifetime = usableLifetime,
+      features = def
+    }
+```
+
+Prompt:
+````
+Add a value `origin` for this type, at x=0, y=0, z=0.
+
+```haskell
+data Point3 = Point3 Int Int Int
+```
+````
+
+Output:
+```
+origin :: Point3
+origin = Point3 0 0 0
+```
+
+## HS004.2: Define a new product type with more than 3 fields as a record with named fields, not as positional constructor arguments
+
+### Examples
+
+Prompt:
+````
+Add a Haskell type for a push notification with a notification id, a recipient user id, a payload, a priority and a creation time. Follow the style of the existing types in the module:
+
+```haskell
+data Ticket = Ticket TicketId UserId Text Status UTCTime
+```
+````
+
+Output:
+```
+data Notification = Notification
+  { notificationId :: NotificationId,
+    recipient :: UserId,
+    payload :: Payload,
+    priority :: Priority,
+    createdAt :: UTCTime
+  }
 ```

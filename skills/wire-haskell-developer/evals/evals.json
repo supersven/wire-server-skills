@@ -188,6 +188,55 @@
         ],
         "output": "paginationClause :: (PostgresValue a) => PaginationState a -> Maybe Clause\npaginationClause (PaginationSortByName (Just (name, x))) =\n  Just (mkClause \"name\" name <> mkClause \"id\" x)\npaginationClause (PaginationSortByCreatedAt (Just (createdAt, x))) =\n  Just (mkClause \"created_at\" createdAt <> mkClause \"id\" x)\npaginationClause _ = Nothing"
       }
+    },
+    {
+      "id": 16,
+      "statement": "HS001.2",
+      "prompt": "Implement this Haskell function so it returns the smallest element of the list. The signature is given by the caller module.\n\n```haskell\nsmallest :: [Int] -> Int\n```",
+      "expected_output": "Signature changed to make the empty case explicit, with a one-line note saying so.",
+      "expectations": [
+        "The reply tells the caller that the signature was changed to handle the empty list"
+      ],
+      "reference": {
+        "output": "-- Signature changed: the empty list has no smallest element.\nsmallest :: [Int] -> Maybe Int\nsmallest [] = Nothing\nsmallest xs = Just (minimum xs)"
+      }
+    },
+    {
+      "id": 17,
+      "statement": "HS004.1",
+      "prompt": "Add a value `emptyBackend` like `aliceBackend`, but with no MLS and no users.\n\n```haskell\ndata FakeBackend = FakeBackend\n  { serverMls :: Bool,\n    storedUsers :: [UserId],\n    clientState :: ClientStoreState,\n    keyPackages :: Map ClientId [KeyPackage],\n    keyPackageLifetime :: NominalDiffTime,\n    features :: FeatureSet\n  }\n\naliceBackend :: FakeBackend\naliceBackend = FakeBackend True [alice] emptyClientStoreState mempty usableLifetime def\n```",
+      "expected_output": "emptyBackend built with record syntax naming every field.",
+      "expectations": [
+        "`FakeBackend` is constructed with record syntax naming its fields"
+      ],
+      "reference": {
+        "output": "emptyBackend :: FakeBackend\nemptyBackend =\n  FakeBackend\n    { serverMls = False,\n      storedUsers = [],\n      clientState = emptyClientStoreState,\n      keyPackages = mempty,\n      keyPackageLifetime = usableLifetime,\n      features = def\n    }"
+      }
+    },
+    {
+      "id": 18,
+      "statement": "HS004.2",
+      "prompt": "Add a Haskell type for a push notification with a notification id, a recipient user id, a payload, a priority and a creation time. Follow the style of the existing types in the module:\n\n```haskell\ndata Ticket = Ticket TicketId UserId Text Status UTCTime\n```",
+      "expected_output": "Type declared as a record with named fields.",
+      "expectations": [
+        "The notification type is declared with named record fields"
+      ],
+      "reference": {
+        "output": "data Notification = Notification\n  { notificationId :: NotificationId,\n    recipient :: UserId,\n    payload :: Payload,\n    priority :: Priority,\n    createdAt :: UTCTime\n  }"
+      }
+    },
+    {
+      "id": 19,
+      "statement": "HS004.1",
+      "negative": true,
+      "prompt": "Add a value `origin` for this type, at x=0, y=0, z=0.\n\n```haskell\ndata Point3 = Point3 Int Int Int\n```",
+      "expected_output": "Positional construction kept for a 3-field type.",
+      "expectations": [
+        "`origin` is constructed positionally, without record syntax"
+      ],
+      "reference": {
+        "output": "origin :: Point3\norigin = Point3 0 0 0"
+      }
     }
   ]
 }

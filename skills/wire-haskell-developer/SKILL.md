@@ -24,3 +24,8 @@ Pick the library from the project's `build-depends`; never add a dependency for 
 ### HS003: Let patterns do the matching
 
 - HS003.1: Branch on parameters with patterns first, guards second, `if`/`when`/`unless` last. When the choice depends only on the function's parameters, write one clause per shape (`f _ [] = ...`, `f "" = ...`, `f x xs = ...`; literals are patterns too, so test for `[]`/`""` with a pattern, not `null`; also instead of a `case` on a parameter) rather than one clause with guards, and guards (`f x | x > 3 = ...`) rather than `if`, `when` or `unless`. The head then shows the cases, bound variables come from the match, and the compiler checks coverage. Use guards only for conditions a pattern cannot express (comparisons, predicates), and `if`/`when`/`unless` only when the condition depends on something computed in the body.
+
+### HS004: Use record syntax for products with many fields
+
+- HS004.1: Construct a product type with more than 3 fields using record syntax, one `field = value` per line in ormolu layout (trailing commas), not positionally. Field names document each value and survive reordering of fields. Types with up to 3 fields stay positional.
+- HS004.2: Define a new product type with more than 3 fields as a record with named fields, not as positional constructor arguments.
