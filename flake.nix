@@ -42,12 +42,11 @@
         genReference = pkgs.writers.writePython3Bin "gen-reference" {
           flakeIgnore = [ "E501" ];
         } (builtins.readFile ./scripts/gen-reference.py);
-        runEvals = script "run-evals" [
-          pkgs.jq
-          pkgs.coreutils
-          pkgs.gnugrep
-          python
-        ];
+        # pyyaml: skill-creator's run_eval (trigger evals) runs under the same interpreter.
+        runEvals = pkgs.writers.writePython3Bin "run-evals" {
+          libraries = [ pkgs.python3Packages.pyyaml ];
+          flakeIgnore = [ "E501" ];
+        } (builtins.readFile ./scripts/run-evals.py);
         cloneRepos = script "clone-repos" [ pkgs.git ];
 
         syncSkillCreator = pkgs.writeShellApplication {

@@ -16,11 +16,12 @@
     {
       "id": 3,
       "statement": "HS002.1",
-      "prompt": "Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec, attoparsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.\n\n```haskell\nrecoveryCodeFromText :: Text -> Either String RecoveryCode\nrecoveryCodeFromText t\n  | length groups /= 4 || any ((/= 4) . Text.length) groups =\n      Left \"recovery code must have the shape xxxx-xxxx-xxxx-xxxx\"\n  | not (all (Text.all (`elem` crockfordAlphabet)) groups) =\n      Left \"recovery code must be Crockford base32 (no I, L, O, U)\"\n  | otherwise = Right (RecoveryCode upper)\n  where\n    upper = Text.toUpper t\n    groups = Text.splitOn \"-\" upper\n\nsecondFactorCodeFromText :: Text -> Either String SecondFactorCode\nsecondFactorCodeFromText t =\n  case Text.stripPrefix \"totp:\" t of\n    Just rest -> SFTotp <$> totpCodeFromText rest\n    Nothing ->\n      case Text.stripPrefix \"recovery:\" t of\n        Just rest -> SFRecovery <$> recoveryCodeFromText rest\n        Nothing -> Left \"unknown second factor type; expected totp: or recovery:\"\n```",
+      "prompt": "Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.\n\n```haskell\nrecoveryCodeFromText :: Text -> Either String RecoveryCode\nrecoveryCodeFromText t\n  | length groups /= 4 || any ((/= 4) . Text.length) groups =\n      Left \"recovery code must have the shape xxxx-xxxx-xxxx-xxxx\"\n  | not (all (Text.all (`elem` crockfordAlphabet)) groups) =\n      Left \"recovery code must be Crockford base32 (no I, L, O, U)\"\n  | otherwise = Right (RecoveryCode upper)\n  where\n    upper = Text.toUpper t\n    groups = Text.splitOn \"-\" upper\n\nsecondFactorCodeFromText :: Text -> Either String SecondFactorCode\nsecondFactorCodeFromText t =\n  case Text.stripPrefix \"totp:\" t of\n    Just rest -> SFTotp <$> totpCodeFromText rest\n    Nothing ->\n      case Text.stripPrefix \"recovery:\" t of\n        Just rest -> SFRecovery <$> recoveryCodeFromText rest\n        Nothing -> Left \"unknown second factor type; expected totp: or recovery:\"\n```",
       "expected_output": "Hand-rolled Text splitting replaced by a megaparsec parser.",
       "expectations": [
         "The text is parsed with a Text.Megaparsec parser (imports Text.Megaparsec and runs it via parse or runParser)",
-        "The parsing code does not take the input apart with Text.splitOn, Text.split or Text.stripPrefix"
+        "The parsing code does not take the input apart with Text.splitOn, Text.split or Text.stripPrefix",
+        "The megaparsec parser is run with `<* eof` so trailing input is rejected"
       ],
       "reference": {
         "source": [
@@ -59,16 +60,16 @@
     {
       "id": 6,
       "statement": "HS003.1",
-      "prompt": "Review and refactor this Haskell function. Reply with the full code.\n\n```haskell\nlookupMeetingCodes ::\n  (PGConstraints r) =>\n  [MeetingId] ->\n  Sem r (Map MeetingId (Code, Maybe Password))\nlookupMeetingCodes mids\n  | null mids = pure Map.empty\n  | otherwise = do\n      keys <-\n        Map.fromList\n          <$> traverse (\\mid -> (,mid) <$> Code.mkKey (CodeReferentMeeting mid)) mids\n      rows <-\n        V.toList\n          <$> runStatement\n            (V.fromList (map (postgresMarshall . fst) (Map.toList keys)), postgresMarshall CodeTargetMeeting)\n            selectMeetingCodes\n      pure $\n        Map.fromList\n          [ (mid, toCode k (val', ttl, codeReferentFromTarget target' targetId, mPw'))\n          | (key, val, ttl, targetId, mPw, target) <- rows,\n            Right k <- [postgresUnmarshall key],\n            mid <- maybeToList (Map.lookup k keys),\n            Right val' <- [postgresUnmarshall val],\n            Right target' <- [postgresUnmarshall target],\n            Right mPw' <- [traverse postgresUnmarshall mPw]\n          ]\n  where\n    selectMeetingCodes :: Hasql.Statement (Vector Text, Text) (Vector (Text, Text, Int32, UUID, Maybe ByteString, Text))\n    selectMeetingCodes =\n      [vectorStatement|SELECT\n                          key :: text,\n                          value :: text,\n                          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - now()))))::int4 AS ttl_secs,\n                          conversation :: uuid,\n                          password :: bytea?,\n                          target :: text\n                        FROM conversation_codes\n                        WHERE key = ANY ($1 :: text[]) AND target = ($2 :: text) AND expires_at > now()\n                        |]\n```",
-      "expected_output": "Empty-list guard replaced by a function clause matching [].",
+      "prompt": "Review and refactor this Haskell function. Reply with the full code. The module enables OverloadedStrings.\n\n```haskell\ntotpSecretFromBase32 :: Text -> Either String TOTPSecret\ntotpSecretFromBase32 txt\n  | Text.null txt = Left \"TOTP secret must not be empty\"\n  | Text.any (== '=') txt = Left \"TOTP secret must be unpadded base32 (RFC 4648)\"\n  | otherwise = TOTPSecret <$> convertFromBase Base32 (Text.encodeUtf8 padded)\n  where\n    upper = Text.toUpper txt\n    padded = upper <> Text.replicate ((8 - Text.length upper `rem` 8) `rem` 8) \"=\"\n```",
+      "expected_output": "Empty-text guard replaced by a function clause matching the empty string literal; the remaining conditions stay guards.",
       "expectations": [
-        "The empty `mids` case is its own clause `lookupMeetingCodes []`, not a `null mids` guard or `if`"
+        "The empty-text case is its own clause matching `\"\"`, not a `Text.null` guard or `if`"
       ],
       "reference": {
         "source": [
-          "wire-server/libs/wire-subsystems/src/Wire/CodeStore/Postgres.hs"
+          "wire-server/libs/wire-api/src/Wire/API/User/Auth/TOTP.hs"
         ],
-        "output": "lookupMeetingCodes ::\n  (PGConstraints r) =>\n  [MeetingId] ->\n  Sem r (Map MeetingId (Code, Maybe Password))\nlookupMeetingCodes [] = pure Map.empty\nlookupMeetingCodes mids = do\n  keys <-\n    Map.fromList\n      <$> traverse (\\mid -> (,mid) <$> Code.mkKey (CodeReferentMeeting mid)) mids\n  rows <-\n    V.toList\n      <$> runStatement\n        (V.fromList (map (postgresMarshall . fst) (Map.toList keys)), postgresMarshall CodeTargetMeeting)\n        selectMeetingCodes\n  pure $\n    Map.fromList\n      [ (mid, toCode k (val', ttl, codeReferentFromTarget target' targetId, mPw'))\n      | (key, val, ttl, targetId, mPw, target) <- rows,\n        Right k <- [postgresUnmarshall key],\n        mid <- maybeToList (Map.lookup k keys),\n        Right val' <- [postgresUnmarshall val],\n        Right target' <- [postgresUnmarshall target],\n        Right mPw' <- [traverse postgresUnmarshall mPw]\n      ]\n  where\n    selectMeetingCodes :: Hasql.Statement (Vector Text, Text) (Vector (Text, Text, Int32, UUID, Maybe ByteString, Text))\n    selectMeetingCodes =\n      [vectorStatement|SELECT\n                          key :: text,\n                          value :: text,\n                          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - now()))))::int4 AS ttl_secs,\n                          conversation :: uuid,\n                          password :: bytea?,\n                          target :: text\n                        FROM conversation_codes\n                        WHERE key = ANY ($1 :: text[]) AND target = ($2 :: text) AND expires_at > now()\n                        |]"
+        "output": "totpSecretFromBase32 :: Text -> Either String TOTPSecret\ntotpSecretFromBase32 \"\" = Left \"TOTP secret must not be empty\"\ntotpSecretFromBase32 txt\n  | Text.any (== '=') txt = Left \"TOTP secret must be unpadded base32 (RFC 4648)\"\n  | otherwise = TOTPSecret <$> convertFromBase Base32 (Text.encodeUtf8 padded)\n  where\n    upper = Text.toUpper txt\n    padded = upper <> Text.replicate ((8 - Text.length upper `rem` 8) `rem` 8) \"=\""
       }
     },
     {
@@ -107,7 +108,8 @@
       "prompt": "Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, bytestring, containers, attoparsec`.\n\n```haskell\nparseDeadQueue :: ByteString -> Maybe (ByteString, ByteString)\nparseDeadQueue bs = do\n  rest <- BS.stripPrefix \"user-notifications.\" bs\n  let (uid, rest') = BS8.break (== '.') rest\n  cid <- BS.stripPrefix \".\" rest'\n  guard (not (BS.null uid) && not (BS.null cid) && BS8.notElem '.' cid)\n  pure (uid, cid)\n```",
       "expected_output": "Hand-rolled ByteString splitting replaced by an attoparsec parser, the only parser library available.",
       "expectations": [
-        "The ByteString is parsed with a Data.Attoparsec.ByteString parser run via parseOnly, not with BS.stripPrefix or BS8.break"
+        "The ByteString is parsed with a Data.Attoparsec.ByteString parser run via parseOnly, not with BS.stripPrefix or BS8.break",
+        "The attoparsec parser is followed by `endOfInput` so trailing input is rejected"
       ],
       "reference": {
         "source": [
@@ -129,6 +131,62 @@
           "wire-server/services/gundeck/migrate-data/src/V1_DeleteApnsVoipTokens.hs"
         ],
         "output": "isVoipArn :: Text -> Bool\nisVoipArn = isRight . parseOnly (arn <* endOfInput)\n  where\n    arn = string \"arn:aws:sns:\" *> field *> char ':' *> field *> char ':' *> topic\n    field = takeWhile (/= ':')\n    topic = string \"endpoint/\" *> (string \"APNS_VOIP_SANDBOX\" <|> string \"APNS_VOIP\") *> (char '/' *> field <|> pure \"\")"
+      }
+    },
+    {
+      "id": 12,
+      "statement": "HS002.4",
+      "prompt": "Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, attoparsec`.\n\n```haskell\nparseHostPort :: Text -> Either String (Text, Int)\nparseHostPort t =\n  case Text.breakOn \":\" t of\n    (\"\", _) -> Left \"empty host\"\n    (_, \"\") -> Left \"missing ':' between host and port\"\n    (host, rest) ->\n      case readMaybe (Text.unpack (Text.drop 1 rest)) of\n        Just p | p > 0 && p < 65536 -> Right (host, p)\n        _ -> Left \"port must be a number between 1 and 65535\"\n```",
+      "expected_output": "Text parsed with megaparsec although attoparsec is also available, as the Left carries a message for a human.",
+      "expectations": [
+        "The host:port text is parsed with Text.Megaparsec, not Data.Attoparsec.Text, because the Left carries an error message",
+        "Parse failures are rendered with `errorBundlePretty`"
+      ],
+      "reference": {
+        "output": "parseHostPort :: Text -> Either String (Text, Int)\nparseHostPort = first errorBundlePretty . parse (hostPort <* eof) \"\"\n  where\n    hostPort = (,) <$> (takeWhile1P (Just \"host\") (/= ':') <* char ':') <*> port\n    port = do\n      p <- L.decimal\n      if p > 0 && p < 65536 then pure p else fail \"port must be a number between 1 and 65535\""
+      }
+    },
+    {
+      "id": 13,
+      "statement": "HS002.4",
+      "prompt": "Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, bytestring, text, megaparsec, attoparsec`.\n\n```haskell\nparseBearer :: ByteString -> Either Text ByteString\nparseBearer h =\n  case BS.stripPrefix \"Bearer \" h of\n    Just token\n      | not (BS.null token) && BS8.notElem ' ' token -> Right token\n    _ -> Left \"Invalid authorization scheme\"\n```",
+      "expected_output": "ByteString header parsed with attoparsec although megaparsec is also available.",
+      "expectations": [
+        "The ByteString is parsed with Data.Attoparsec.ByteString, not megaparsec, because the input is a ByteString"
+      ],
+      "reference": {
+        "source": [
+          "wire-server/libs/wire-api/src/Wire/API/Routes/Bearer.hs"
+        ],
+        "output": "parseBearer :: ByteString -> Either Text ByteString\nparseBearer = first (const \"Invalid authorization scheme\") . parseOnly (string \"Bearer \" *> takeWhile1 (/= ' ') <* endOfInput)"
+      }
+    },
+    {
+      "id": 14,
+      "statement": "HS003.1",
+      "negative": true,
+      "prompt": "Review and refactor this Haskell function. Reply with the full code.\n\n```haskell\nregisterUser :: UserId -> App ()\nregisterUser uid = do\n  existing <- lookupUser uid\n  if isJust existing\n    then throwError UserAlreadyExists\n    else insertUser uid\n```",
+      "expected_output": "Condition on a value computed in the body stays an if (or case on that value), not moved into guards of the function head.",
+      "expectations": [
+        "`registerUser` stays a single clause without guards in its head"
+      ],
+      "reference": {
+        "output": "registerUser :: UserId -> App ()\nregisterUser uid = do\n  existing <- lookupUser uid\n  if isJust existing\n    then throwError UserAlreadyExists\n    else insertUser uid"
+      }
+    },
+    {
+      "id": 15,
+      "statement": "HS003.1",
+      "prompt": "Review and refactor this Haskell function. Reply with the full code.\n\n```haskell\npaginationClause :: (PostgresValue a) => PaginationState a -> Maybe Clause\npaginationClause s = case s of\n  PaginationSortByName (Just (name, x)) ->\n    Just (mkClause \"name\" name <> mkClause \"id\" x)\n  PaginationSortByCreatedAt (Just (createdAt, x)) ->\n    Just (mkClause \"created_at\" createdAt <> mkClause \"id\" x)\n  PaginationOffset _ -> Nothing\n  _ -> Nothing\n```",
+      "expected_output": "case on a parameter replaced by one function clause per shape.",
+      "expectations": [
+        "`paginationClause` is defined by function clauses matching the constructors, not by `case` or `\\case` on its parameter"
+      ],
+      "reference": {
+        "source": [
+          "wire-server/libs/wire-subsystems/src/Wire/PaginationState.hs"
+        ],
+        "output": "paginationClause :: (PostgresValue a) => PaginationState a -> Maybe Clause\npaginationClause (PaginationSortByName (Just (name, x))) =\n  Just (mkClause \"name\" name <> mkClause \"id\" x)\npaginationClause (PaginationSortByCreatedAt (Just (createdAt, x))) =\n  Just (mkClause \"created_at\" createdAt <> mkClause \"id\" x)\npaginationClause _ = Nothing"
       }
     }
   ]

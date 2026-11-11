@@ -26,7 +26,7 @@ Source: `wire-server/libs/wire-api/src/Wire/API/User/Auth/TOTP.hs`
 
 Prompt:
 ````
-Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec, attoparsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.
+Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.
 
 ```haskell
 recoveryCodeFromText :: Text -> Either String RecoveryCode
@@ -175,6 +175,56 @@ isVoipArn = isRight . parseOnly (arn <* endOfInput)
     topic = string "endpoint/" *> (string "APNS_VOIP_SANDBOX" <|> string "APNS_VOIP") *> (char '/' *> field <|> pure "")
 ```
 
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, attoparsec`.
+
+```haskell
+parseHostPort :: Text -> Either String (Text, Int)
+parseHostPort t =
+  case Text.breakOn ":" t of
+    ("", _) -> Left "empty host"
+    (_, "") -> Left "missing ':' between host and port"
+    (host, rest) ->
+      case readMaybe (Text.unpack (Text.drop 1 rest)) of
+        Just p | p > 0 && p < 65536 -> Right (host, p)
+        _ -> Left "port must be a number between 1 and 65535"
+```
+````
+
+Output:
+```
+parseHostPort :: Text -> Either String (Text, Int)
+parseHostPort = first errorBundlePretty . parse (hostPort <* eof) ""
+  where
+    hostPort = (,) <$> (takeWhile1P (Just "host") (/= ':') <* char ':') <*> port
+    port = do
+      p <- L.decimal
+      if p > 0 && p < 65536 then pure p else fail "port must be a number between 1 and 65535"
+```
+
+Source: `wire-server/libs/wire-api/src/Wire/API/Routes/Bearer.hs`
+
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, bytestring, text, megaparsec, attoparsec`.
+
+```haskell
+parseBearer :: ByteString -> Either Text ByteString
+parseBearer h =
+  case BS.stripPrefix "Bearer " h of
+    Just token
+      | not (BS.null token) && BS8.notElem ' ' token -> Right token
+    _ -> Left "Invalid authorization scheme"
+```
+````
+
+Output:
+```
+parseBearer :: ByteString -> Either Text ByteString
+parseBearer = first (const "Invalid authorization scheme") . parseOnly (string "Bearer " *> takeWhile1 (/= ' ') <* endOfInput)
+```
+
 ## HS003.1: Branch on parameters with patterns first, guards second, `if`/`when`/`unless` last
 
 ### Examples
@@ -292,93 +342,34 @@ getContactStatusesImpl self qids = do
               (tUnqualified rstatuses)
 ```
 
-Source: `wire-server/libs/wire-subsystems/src/Wire/CodeStore/Postgres.hs`
+Source: `wire-server/libs/wire-api/src/Wire/API/User/Auth/TOTP.hs`
 
 Prompt:
 ````
-Review and refactor this Haskell function. Reply with the full code.
+Review and refactor this Haskell function. Reply with the full code. The module enables OverloadedStrings.
 
 ```haskell
-lookupMeetingCodes ::
-  (PGConstraints r) =>
-  [MeetingId] ->
-  Sem r (Map MeetingId (Code, Maybe Password))
-lookupMeetingCodes mids
-  | null mids = pure Map.empty
-  | otherwise = do
-      keys <-
-        Map.fromList
-          <$> traverse (\mid -> (,mid) <$> Code.mkKey (CodeReferentMeeting mid)) mids
-      rows <-
-        V.toList
-          <$> runStatement
-            (V.fromList (map (postgresMarshall . fst) (Map.toList keys)), postgresMarshall CodeTargetMeeting)
-            selectMeetingCodes
-      pure $
-        Map.fromList
-          [ (mid, toCode k (val', ttl, codeReferentFromTarget target' targetId, mPw'))
-          | (key, val, ttl, targetId, mPw, target) <- rows,
-            Right k <- [postgresUnmarshall key],
-            mid <- maybeToList (Map.lookup k keys),
-            Right val' <- [postgresUnmarshall val],
-            Right target' <- [postgresUnmarshall target],
-            Right mPw' <- [traverse postgresUnmarshall mPw]
-          ]
+totpSecretFromBase32 :: Text -> Either String TOTPSecret
+totpSecretFromBase32 txt
+  | Text.null txt = Left "TOTP secret must not be empty"
+  | Text.any (== '=') txt = Left "TOTP secret must be unpadded base32 (RFC 4648)"
+  | otherwise = TOTPSecret <$> convertFromBase Base32 (Text.encodeUtf8 padded)
   where
-    selectMeetingCodes :: Hasql.Statement (Vector Text, Text) (Vector (Text, Text, Int32, UUID, Maybe ByteString, Text))
-    selectMeetingCodes =
-      [vectorStatement|SELECT
-                          key :: text,
-                          value :: text,
-                          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - now()))))::int4 AS ttl_secs,
-                          conversation :: uuid,
-                          password :: bytea?,
-                          target :: text
-                        FROM conversation_codes
-                        WHERE key = ANY ($1 :: text[]) AND target = ($2 :: text) AND expires_at > now()
-                        |]
+    upper = Text.toUpper txt
+    padded = upper <> Text.replicate ((8 - Text.length upper `rem` 8) `rem` 8) "="
 ```
 ````
 
 Output:
 ```
-lookupMeetingCodes ::
-  (PGConstraints r) =>
-  [MeetingId] ->
-  Sem r (Map MeetingId (Code, Maybe Password))
-lookupMeetingCodes [] = pure Map.empty
-lookupMeetingCodes mids = do
-  keys <-
-    Map.fromList
-      <$> traverse (\mid -> (,mid) <$> Code.mkKey (CodeReferentMeeting mid)) mids
-  rows <-
-    V.toList
-      <$> runStatement
-        (V.fromList (map (postgresMarshall . fst) (Map.toList keys)), postgresMarshall CodeTargetMeeting)
-        selectMeetingCodes
-  pure $
-    Map.fromList
-      [ (mid, toCode k (val', ttl, codeReferentFromTarget target' targetId, mPw'))
-      | (key, val, ttl, targetId, mPw, target) <- rows,
-        Right k <- [postgresUnmarshall key],
-        mid <- maybeToList (Map.lookup k keys),
-        Right val' <- [postgresUnmarshall val],
-        Right target' <- [postgresUnmarshall target],
-        Right mPw' <- [traverse postgresUnmarshall mPw]
-      ]
+totpSecretFromBase32 :: Text -> Either String TOTPSecret
+totpSecretFromBase32 "" = Left "TOTP secret must not be empty"
+totpSecretFromBase32 txt
+  | Text.any (== '=') txt = Left "TOTP secret must be unpadded base32 (RFC 4648)"
+  | otherwise = TOTPSecret <$> convertFromBase Base32 (Text.encodeUtf8 padded)
   where
-    selectMeetingCodes :: Hasql.Statement (Vector Text, Text) (Vector (Text, Text, Int32, UUID, Maybe ByteString, Text))
-    selectMeetingCodes =
-      [vectorStatement|SELECT
-                          key :: text,
-                          value :: text,
-                          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (expires_at - now()))))::int4 AS ttl_secs,
-                          conversation :: uuid,
-                          password :: bytea?,
-                          target :: text
-                        FROM conversation_codes
-                        WHERE key = ANY ($1 :: text[]) AND target = ($2 :: text) AND expires_at > now()
-                        |]
+    upper = Text.toUpper txt
+    padded = upper <> Text.replicate ((8 - Text.length upper `rem` 8) `rem` 8) "="
 ```
 
 Source: `wire-server/services/brig/src/Brig/Options.hs`
@@ -433,4 +424,56 @@ guardUserDisplayname new user
     new.newUserDisplayName /= user.userDisplayName =
       throwE RegisterErrorScimDisplayNameMismatch
   | otherwise = pure ()
+```
+
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code.
+
+```haskell
+registerUser :: UserId -> App ()
+registerUser uid = do
+  existing <- lookupUser uid
+  if isJust existing
+    then throwError UserAlreadyExists
+    else insertUser uid
+```
+````
+
+Output:
+```
+registerUser :: UserId -> App ()
+registerUser uid = do
+  existing <- lookupUser uid
+  if isJust existing
+    then throwError UserAlreadyExists
+    else insertUser uid
+```
+
+Source: `wire-server/libs/wire-subsystems/src/Wire/PaginationState.hs`
+
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code.
+
+```haskell
+paginationClause :: (PostgresValue a) => PaginationState a -> Maybe Clause
+paginationClause s = case s of
+  PaginationSortByName (Just (name, x)) ->
+    Just (mkClause "name" name <> mkClause "id" x)
+  PaginationSortByCreatedAt (Just (createdAt, x)) ->
+    Just (mkClause "created_at" createdAt <> mkClause "id" x)
+  PaginationOffset _ -> Nothing
+  _ -> Nothing
+```
+````
+
+Output:
+```
+paginationClause :: (PostgresValue a) => PaginationState a -> Maybe Clause
+paginationClause (PaginationSortByName (Just (name, x))) =
+  Just (mkClause "name" name <> mkClause "id" x)
+paginationClause (PaginationSortByCreatedAt (Just (createdAt, x))) =
+  Just (mkClause "created_at" createdAt <> mkClause "id" x)
+paginationClause _ = Nothing
 ```
