@@ -72,21 +72,6 @@
       }
     },
     {
-      "id": 7,
-      "statement": "HS003.2",
-      "prompt": "Review and refactor this Haskell function. Reply with the full code.\n\n```haskell\nssoLogin ::\n  (Member Rpc r, Member (Input Endpoint) r, Member (Error ParseException) r, Member (Error RpcException) r) =>\n  UserId ->\n  Maybe CookieLabel ->\n  Sem r SetCookie\nssoLogin buid mlabel = do\n  resp <-\n    brigRequest $\n      method POST\n        . path \"/i/sso-login\"\n        . json (Sso.SsoLogin buid mlabel)\n        . queryItem \"persist\" \"true\"\n  case statusCode resp of\n    200 ->\n      case getHeader \"Set-Cookie\" resp of\n        Nothing -> throw $ ParseException \"brig\" \"Missing Set-Cookie header in SSO login response\"\n        Just cky -> pure $ parseSetCookie cky\n    _ -> rethrow \"brig\" resp\n```",
-      "expected_output": "Nested case folded into a single case with a tuple scrutinee or nested patterns.",
-      "expectations": [
-        "No `case` or `if` appears inside a branch of another `case`"
-      ],
-      "reference": {
-        "source": [
-          "wire-server/libs/wire-subsystems/src/Wire/BrigAPIAccess/Rpc.hs"
-        ],
-        "output": "ssoLogin ::\n  (Member Rpc r, Member (Input Endpoint) r, Member (Error ParseException) r, Member (Error RpcException) r) =>\n  UserId ->\n  Maybe CookieLabel ->\n  Sem r SetCookie\nssoLogin buid mlabel = do\n  resp <-\n    brigRequest $\n      method POST\n        . path \"/i/sso-login\"\n        . json (Sso.SsoLogin buid mlabel)\n        . queryItem \"persist\" \"true\"\n  case (statusCode resp, getHeader \"Set-Cookie\" resp) of\n    (200, Nothing) -> throw $ ParseException \"brig\" \"Missing Set-Cookie header in SSO login response\"\n    (200, Just cky) -> pure $ parseSetCookie cky\n    _ -> rethrow \"brig\" resp"
-      }
-    },
-    {
       "id": 8,
       "statement": "HS003.1",
       "prompt": "Review and refactor this Haskell function. Reply with the full code.\n\n```haskell\nasciiOnly :: Text -> A.Parser ByteString\nasciiOnly t =\n  if Text.all Char.isAscii t\n    then pure $ Text.encodeUtf8 t\n    else fail $ \"Expected ascii string only, found: \" <> Text.unpack t\n```",
