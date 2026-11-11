@@ -14,8 +14,12 @@ Each rule consists of statements with IDs (used to tie them to evals).
 
 ### HS002: Parse structured text with a parser library
 
+Pick the library from the project's `build-depends`; never add a dependency for a small parser.
+
 - HS002.1: Use megaparsec instead of taking text apart by hand. When code deconstructs structured text (prefixes, delimited fields, fixed formats) with chains of `splitOn`, `split`, `breakOn`, `stripPrefix`, `span`, `splitAt` or `words`, write a megaparsec parser instead, provided megaparsec is in the project's `build-depends`. The grammar then reads off the code, and malformed input gets a real error. Run the parser with `parse (p <* eof)` so trailing garbage is rejected, and render failures with `errorBundlePretty`.
-- HS002.2: Use Parsec when megaparsec is not a dependency. If the project depends on `parsec` but not on `megaparsec`, write the parser with `Text.Parsec` (`Text.Parsec.Text`) instead of splitting by hand. Do not add a new dependency for a small parser.
+- HS002.2: Use Parsec when neither megaparsec nor attoparsec is a dependency. If the project depends on `parsec` only, write the parser with `Text.Parsec` (`Text.Parsec.Text`) instead of splitting by hand.
+- HS002.3: Use attoparsec when it is the only parser library available, for `Text` and `ByteString` alike (`Data.Attoparsec.Text`, `Data.Attoparsec.ByteString.Char8`). Run it with `parseOnly (p <* endOfInput)` so trailing garbage is rejected.
+- HS002.4: When megaparsec and attoparsec are both available, match the library to the task. Use attoparsec when the input is a `ByteString` or the caller only needs accept/reject or a value (`Bool`, `Maybe`): it is fast and a failure needs no position. Use megaparsec when the error reaches a human (`Either String`/`Either Error` with a message): its errors carry position and expected tokens.
 
 ### HS003: Let patterns do the matching
 

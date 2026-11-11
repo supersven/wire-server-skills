@@ -26,7 +26,7 @@ Source: `wire-server/libs/wire-api/src/Wire/API/User/Auth/TOTP.hs`
 
 Prompt:
 ````
-Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.
+Review and refactor these Haskell functions. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, parsec, attoparsec`; `totpCodeFromText :: Text -> Either String TOTPCode` is defined elsewhere.
 
 ```haskell
 recoveryCodeFromText :: Text -> Either String RecoveryCode
@@ -73,7 +73,7 @@ secondFactorCodeFromText :: Text -> Either String SecondFactorCode
 secondFactorCodeFromText = first errorBundlePretty . parse (secondFactorCodeParser <* eof) ""
 ```
 
-## HS002.2: Use Parsec when megaparsec is not a dependency
+## HS002.2: Use Parsec when neither megaparsec nor attoparsec is a dependency
 
 ### Examples
 
@@ -110,6 +110,69 @@ voipArn = do
   _ <- try (string "APNS_VOIP_SANDBOX") <|> string "APNS_VOIP"
   _ <- optional (char '/' *> many (noneOf ":"))
   eof
+```
+
+## HS002.3: Use attoparsec when it is the only parser library available, for `Text` and `ByteString` alike (`Data
+
+### Examples
+
+Source: `wire-server/services/background-worker/src/Wire/DeadUserNotificationWatcher.hs`
+
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, bytestring, containers, attoparsec`.
+
+```haskell
+parseDeadQueue :: ByteString -> Maybe (ByteString, ByteString)
+parseDeadQueue bs = do
+  rest <- BS.stripPrefix "user-notifications." bs
+  let (uid, rest') = BS8.break (== '.') rest
+  cid <- BS.stripPrefix "." rest'
+  guard (not (BS.null uid) && not (BS.null cid) && BS8.notElem '.' cid)
+  pure (uid, cid)
+```
+````
+
+Output:
+```
+parseDeadQueue :: ByteString -> Maybe (ByteString, ByteString)
+parseDeadQueue = either (const Nothing) Just . parseOnly (queue <* endOfInput)
+  where
+    queue = (,) <$> (string "user-notifications." *> segment) <* char '.' <*> segment
+    segment = takeWhile1 (/= '.')
+```
+
+## HS002.4: When megaparsec and attoparsec are both available, match the library to the task
+
+### Examples
+
+Source: `wire-server/services/gundeck/migrate-data/src/V1_DeleteApnsVoipTokens.hs`
+
+Prompt:
+````
+Review and refactor this Haskell function. Reply with the full code. The project's build-depends are `base, text, containers, megaparsec, attoparsec`.
+
+```haskell
+isVoipArn :: Text -> Bool
+isVoipArn arn =
+  case Text.splitOn ":" arn of
+    ["arn", "aws", "sns", _region, _accountId, topic] ->
+      case Text.splitOn "/" topic of
+        ("endpoint" : "APNS_VOIP" : _) -> True
+        ("endpoint" : "APNS_VOIP_SANDBOX" : _) -> True
+        _ -> False
+    _ -> False
+```
+````
+
+Output:
+```
+isVoipArn :: Text -> Bool
+isVoipArn = isRight . parseOnly (arn <* endOfInput)
+  where
+    arn = string "arn:aws:sns:" *> field *> char ':' *> field *> char ':' *> topic
+    field = takeWhile (/= ':')
+    topic = string "endpoint/" *> (string "APNS_VOIP_SANDBOX" <|> string "APNS_VOIP") *> (char '/' *> field <|> pure "")
 ```
 
 ## HS003.1: Branch on parameters with patterns first, guards second, `if`/`when`/`unless` last
