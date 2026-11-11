@@ -237,6 +237,31 @@
       "reference": {
         "output": "origin :: Point3\norigin = Point3 0 0 0"
       }
+    },
+    {
+      "id": 21,
+      "statement": "HS005.1",
+      "negative": true,
+      "prompt": "Add `getTeamMemberIds` below `getTeamMember`, returning the user ids of all team members.\n\n```haskell\ngetTeamMember :: (Member (Input Env) r, Member (Error TeamError) r, Member TeamStore r) => Local UserId -> TeamId -> UserId -> Sem r TeamMember\ngetTeamMember lusr tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid\n```",
+      "expected_output": "Existing overlong line left untouched.",
+      "expectations": [
+        "The existing `getTeamMember` signature is not re-wrapped over several lines"
+      ],
+      "reference": {
+        "output": "getTeamMember :: (Member (Input Env) r, Member (Error TeamError) r, Member TeamStore r) => Local UserId -> TeamId -> UserId -> Sem r TeamMember\ngetTeamMember lusr tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid\n\ngetTeamMemberIds :: Member TeamStore r => TeamId -> Sem r [UserId]\ngetTeamMemberIds tid = map (view userId) <$> E.getTeamMembers tid"
+      }
+    },
+    {
+      "id": 22,
+      "statement": "HS005.1",
+      "prompt": "Add `getTeamAdmins`: like `getTeamMember`, but returns all members of the team that are admins. Document it with Haddock like the existing functions, covering: the empty result for unknown teams, that deleted members are excluded, and that no visibility check is done for the caller.\n\n```haskell\n-- | Look up a single member of a team. Throws `TeamMemberNotFound` if the user exists but is not a member of the given team, and does not check whether the caller is allowed to see the team at all.\ngetTeamMember :: Member TeamStore r => TeamId -> UserId -> Sem r TeamMember\ngetTeamMember tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid\n\n-- | Look up the number of members of a team. Returns zero for teams that do not exist, and counts members that are marked as deleted, because the store has no cheap way to tell them apart.\ngetTeamSize :: Member TeamStore r => TeamId -> Sem r Int\ngetTeamSize tid = length <$> E.getTeamMembers tid\n```",
+      "expected_output": "Haddock wrapped over several lines.",
+      "expectations": [
+        "The Haddock comment of `getTeamAdmins` is wrapped over several lines, none far longer than 100 characters"
+      ],
+      "reference": {
+        "output": "-- | Look up all admins of a team. Returns the empty list if the team does not exist, excludes\n-- members that are marked as deleted, and does not check whether the caller is allowed to see\n-- the team at all.\ngetTeamAdmins :: Member TeamStore r => TeamId -> Sem r [TeamMember]\ngetTeamAdmins tid = filter (isAdmin . view permissions) . filter (not . view deleted) <$> E.getTeamMembers tid"
+      }
     }
   ]
 }

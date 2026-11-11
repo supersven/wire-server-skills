@@ -29,3 +29,7 @@ Pick the library from the project's `build-depends`; never add a dependency for 
 
 - HS004.1: Construct a product type with more than 3 fields using record syntax, one `field = value` per line in ormolu layout (trailing commas), not positionally. Field names document each value and survive reordering of fields. Types with up to 3 fields stay positional.
 - HS004.2: Define a new product type with more than 3 fields as a record with named fields, not as positional constructor arguments.
+
+### HS005: Keep new lines short
+
+- HS005.1: Wrap everything you write or change at about 100 characters (count characters, not bytes; a tab is one character): code, comments and Haddock alike. Wrap prose in comments and Haddock at word boundaries, also when the surrounding comments in the file are longer. Wrap code in the layout of the project's formatter (ormolu in wire-server): break long signatures after `->` and `=>`, put each constraint, argument or operator-chain step on its own line, bind a long subexpression with `let`/`where`. 100 is an orientation, not a hard limit: a line a few characters over is fine when wrapping would read worse. When asked to review or refactor code, wrap its overlong lines too. Leave other untouched lines alone, and allow an overlong line when wrapping is not feasible (long string literal, URL, import).

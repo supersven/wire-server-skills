@@ -570,3 +570,50 @@ data Notification = Notification
     createdAt :: UTCTime
   }
 ```
+
+## HS005.1: Wrap everything you write or change at about 100 characters (count characters, not bytes; a tab is one character): code, comments and Haddock alike
+
+### Examples
+
+Prompt:
+````
+Add `getTeamMemberIds` below `getTeamMember`, returning the user ids of all team members.
+
+```haskell
+getTeamMember :: (Member (Input Env) r, Member (Error TeamError) r, Member TeamStore r) => Local UserId -> TeamId -> UserId -> Sem r TeamMember
+getTeamMember lusr tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid
+```
+````
+
+Output:
+```
+getTeamMember :: (Member (Input Env) r, Member (Error TeamError) r, Member TeamStore r) => Local UserId -> TeamId -> UserId -> Sem r TeamMember
+getTeamMember lusr tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid
+
+getTeamMemberIds :: Member TeamStore r => TeamId -> Sem r [UserId]
+getTeamMemberIds tid = map (view userId) <$> E.getTeamMembers tid
+```
+
+Prompt:
+````
+Add `getTeamAdmins`: like `getTeamMember`, but returns all members of the team that are admins. Document it with Haddock like the existing functions, covering: the empty result for unknown teams, that deleted members are excluded, and that no visibility check is done for the caller.
+
+```haskell
+-- | Look up a single member of a team. Throws `TeamMemberNotFound` if the user exists but is not a member of the given team, and does not check whether the caller is allowed to see the team at all.
+getTeamMember :: Member TeamStore r => TeamId -> UserId -> Sem r TeamMember
+getTeamMember tid uid = fromMaybeM (throw TeamMemberNotFound) =<< E.getTeamMember tid uid
+
+-- | Look up the number of members of a team. Returns zero for teams that do not exist, and counts members that are marked as deleted, because the store has no cheap way to tell them apart.
+getTeamSize :: Member TeamStore r => TeamId -> Sem r Int
+getTeamSize tid = length <$> E.getTeamMembers tid
+```
+````
+
+Output:
+```
+-- | Look up all admins of a team. Returns the empty list if the team does not exist, excludes
+-- members that are marked as deleted, and does not check whether the caller is allowed to see
+-- the team at all.
+getTeamAdmins :: Member TeamStore r => TeamId -> Sem r [TeamMember]
+getTeamAdmins tid = filter (isAdmin . view permissions) . filter (not . view deleted) <$> E.getTeamMembers tid
+```
