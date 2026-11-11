@@ -617,3 +617,41 @@ Output:
 getTeamAdmins :: Member TeamStore r => TeamId -> Sem r [TeamMember]
 getTeamAdmins tid = filter (isAdmin . view permissions) . filter (not . view deleted) <$> E.getTeamMembers tid
 ```
+
+## HS006.1: When asked to optimize a polymorphic function that is only used at a few concrete types (dictionary passing shows in the profile), add a `{-# SPECIALIZE f :: 
+
+### Examples
+
+Prompt:
+````
+The profile shows dictionary passing overhead in `sumSquares`, which is only ever called with `Int` and `Double`. Speed it up without changing its signature.
+
+```haskell
+sumSquares :: Num a => [a] -> a
+sumSquares = foldl' (\acc x -> acc + x * x) 0
+```
+````
+
+Output:
+```
+sumSquares :: Num a => [a] -> a
+sumSquares = foldl' (\acc x -> acc + x * x) 0
+{-# SPECIALIZE sumSquares :: [Int] -> Int #-}
+{-# SPECIALIZE sumSquares :: [Double] -> Double #-}
+```
+
+## HS007.1: Derive the instances of a `newtype` with `deriving newtype` (or `GeneralizedNewtypeDeriving`) instead of writing them by hand, for classes that simply delegate to the wrapped type (`Num`, `Eq`, `Ord`, 
+
+### Examples
+
+Prompt:
+```
+Add `newtype Count = Count Int` that supports `+`, `*` and integer literals, plus `Eq`, `Ord` and `Show`.
+```
+
+Output:
+```
+newtype Count = Count Int
+  deriving stock (Show)
+  deriving newtype (Eq, Ord, Num)
+```

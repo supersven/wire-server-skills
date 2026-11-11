@@ -262,6 +262,30 @@
       "reference": {
         "output": "-- | Look up all admins of a team. Returns the empty list if the team does not exist, excludes\n-- members that are marked as deleted, and does not check whether the caller is allowed to see\n-- the team at all.\ngetTeamAdmins :: Member TeamStore r => TeamId -> Sem r [TeamMember]\ngetTeamAdmins tid = filter (isAdmin . view permissions) . filter (not . view deleted) <$> E.getTeamMembers tid"
       }
+    },
+    {
+      "id": 23,
+      "statement": "HS006.1",
+      "prompt": "The profile shows dictionary passing overhead in `sumSquares`, which is only ever called with `Int` and `Double`. Speed it up without changing its signature.\n\n```haskell\nsumSquares :: Num a => [a] -> a\nsumSquares = foldl' (\\acc x -> acc + x * x) 0\n```",
+      "expected_output": "SPECIALIZE pragmas.",
+      "expectations": [
+        "`sumSquares` has `SPECIALIZE` pragmas for `Int` and `Double`"
+      ],
+      "reference": {
+        "output": "sumSquares :: Num a => [a] -> a\nsumSquares = foldl' (\\acc x -> acc + x * x) 0\n{-# SPECIALIZE sumSquares :: [Int] -> Int #-}\n{-# SPECIALIZE sumSquares :: [Double] -> Double #-}"
+      }
+    },
+    {
+      "id": 24,
+      "statement": "HS007.1",
+      "prompt": "Add `newtype Count = Count Int` that supports `+`, `*` and integer literals, plus `Eq`, `Ord` and `Show`.",
+      "expected_output": "Derived Num.",
+      "expectations": [
+        "`Num` for `Count` is derived (`deriving newtype` or `GeneralizedNewtypeDeriving`), not a hand-written instance"
+      ],
+      "reference": {
+        "output": "newtype Count = Count Int\n  deriving stock (Show)\n  deriving newtype (Eq, Ord, Num)"
+      }
     }
   ]
 }

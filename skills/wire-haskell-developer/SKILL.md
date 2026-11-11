@@ -33,3 +33,11 @@ Pick the library from the project's `build-depends`; never add a dependency for 
 ### HS005: Keep new lines short
 
 - HS005.1: Wrap everything you write or change at about 100 characters (count characters, not bytes; a tab is one character): code, comments and Haddock alike. Wrap prose in comments and Haddock at word boundaries, also when the surrounding comments in the file are longer. Wrap code in the layout of the project's formatter (ormolu in wire-server): break long signatures after `->` and `=>`, put each constraint, argument or operator-chain step on its own line, bind a long subexpression with `let`/`where`. 100 is an orientation, not a hard limit: a line a few characters over is fine when wrapping would read worse. When asked to review or refactor code, wrap its overlong lines too. Leave other untouched lines alone, and allow an overlong line when wrapping is not feasible (long string literal, URL, import).
+
+### HS006: Specialize hot polymorphic code
+
+- HS006.1: When asked to optimize a polymorphic function that is only used at a few concrete types (dictionary passing shows in the profile), add a `{-# SPECIALIZE f :: ... #-}` pragma per type and keep the signature. Do this only for hot code: the pragmas cost compile time and add noise.
+
+### HS007: Derive newtype instances
+
+- HS007.1: Derive the instances of a `newtype` with `deriving newtype` (or `GeneralizedNewtypeDeriving`) instead of writing them by hand, for classes that simply delegate to the wrapped type (`Num`, `Eq`, `Ord`, ...).
